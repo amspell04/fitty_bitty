@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from google.adk.cli.fast_api import get_fast_api_app
 
 from backend import db as store
+from backend.mcp_server import mcp
 from backend.models import Workout, WorkoutResult
 
 BASE_DIR = Path(__file__).parent
@@ -17,7 +18,8 @@ PREFIX = "/fitty-bitty"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     store.init_db()
-    yield
+    async with mcp.session_manager.run():
+        yield
 
 
 app = get_fast_api_app(
@@ -27,6 +29,9 @@ app = get_fast_api_app(
     web=False,
     lifespan=lifespan,
 )
+
+
+app.mount("/mcp", mcp.streamable_http_app())
 
 
 @app.get(f"{PREFIX}/today")

@@ -1,5 +1,6 @@
 from datetime import date
 from pathlib import Path
+from uuid import UUID
 
 import sqlite_utils
 
@@ -92,3 +93,8 @@ def save_result(db: sqlite_utils.Database, result: WorkoutResult) -> None:
                 "n_reps_completed": sr.n_reps_completed,
                 "weight_completed": sr.weight_completed, "notes": sr.notes,
             })
+
+
+def set_workout_calibration(db: sqlite_utils.Database, workout_id: UUID, calibration: float) -> None:
+    with db.conn:
+        db["workouts"].update(str(workout_id), {"suggested_calibration": calibration})
