@@ -1,19 +1,51 @@
-from backend.models import Workout, WorkoutResult
 import sqlite3
+from contextlib import asynccontextmanager
+from datetime import date
+from pathlib import Path
 
-def make_db_connection():
-    conn = sqlite3.connect("database.db")
-    return conn.cursor()
+from fastapi import FastAPI, HTTPException
+from google.adk.cli.fast_api import get_fast_api_app
+
+from backend import db as store
+from backend.models import Workout, WorkoutResult
+
+BASE_DIR = Path(__file__).parent
+AGENTS_DIR = str(BASE_DIR / "agents")
+PREFIX = "/fitty-bitty"
 
 
-def get_todays_workout(date: str, ):
-    cursor = make_db_connection()
-    cursor.execute("SELECT * from workout_program where  ")
-    
-    # return todays workout
-    return Workout
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    store.init_db()
+    yield
 
-def post_result():
 
-    # post todays result
-    return WorkoutResult
+app = get_fast_api_app(
+    agents_dir=AGENTS_DIR,
+    session_service_uri=f"sqlite:///{BASE_DIR / 'sessions.db'}",
+    allow_origins=["*"],
+    web=False,
+    lifespan=lifespan,
+)
+
+
+@app.get(f"{PREFIX}/today")
+def get_todays_workout() -> Workout:
+    workout = store.get_workout_by_date(store.get_db(), date.today())
+    if workout is None:
+        raise HTTPException(status_code=404, detail="No workout scheduled for today")
+    return workout
+
+
+@app.get(f"{PREFIX}/results")
+def get_results() -> list[WorkoutResult]:
+    return store.list_results(store.get_db())
+
+
+@app.post(f"{PREFIX}/results", status_code=201)
+def post_result(result: WorkoutResult) -> WorkoutResult:
+    try:
+        store.save_result(store.get_db(), result)
+    except sqlite3.IntegrityError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return result

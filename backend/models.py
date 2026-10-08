@@ -1,32 +1,49 @@
-from typing import Optional
+from datetime import date
+from typing import Literal
+from uuid import UUID, uuid4
 
-class Rep:
+from pydantic import BaseModel, Field
+
+
+class Set(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    kind: Literal["warmup", "working"]
     n_reps: int
     weight: float
-    progressive_factor: Optional[float]
-    deload_factor: Optional[float]
-    suggested_calibration: Optional[float]
+    progressive_factor: float | None = None
+    deload_factor: float | None = None
 
-class RepResult:
-    n_reps_completed: int
-    weight_completed: float
 
-class Set:
+class Exercise(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
     name: str
-    warmup: list[Rep]
-    working: list[Rep]
-
-class SetResult:
-    completed_set: bool
-    notes: Optional[str]
-    rep_result: list[RepResult]
-
-class Workout:
-    time_lenght: float
     sets: list[Set]
 
-class WorkoutResult:
-    time_length: float
-    sets_results: list[SetResult]
+
+class Workout(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    workout_date: date
+    exercises: list[Exercise]
+    suggested_calibration: float | None = None
 
 
+class SetResult(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    set_id: UUID
+    completed: bool = False
+    n_reps_completed: int | None = None
+    weight_completed: float | None = None
+    notes: str | None = None
+
+
+class WorkoutResult(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    workout_id: UUID
+    duration_seconds: float | None = None
+    notes: str | None = None
+    set_results: list[SetResult] = []
+
+
+class FittyResponse(BaseModel):
+    response: str
+    session_id: str
